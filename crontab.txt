@@ -1,2 +1,0 @@
-
-* * * * * python /app/your_script.py

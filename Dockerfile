@@ -19,40 +19,42 @@ RUN python -m pip install --upgrade pip \
 # Stage 2: Runtime
 FROM python:3.11-slim
 
-# set timezone to UTC
-ENV TZ=UTC
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/install
+# Ensure cron and proc tools are available (procps provides ps/pgrep)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cron procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set timezone to UTC
+RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 
 WORKDIR /app
 
-# Install system deps: cron and timezone data
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    cron \
-    tzdata \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Ensure UTC timezone
-RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && echo "UTC" > /etc/timezone
-
-# Copy python packages from builder
+# Copy installed Python packages from builder
 COPY --from=builder /install /install
+ENV PYTHONPATH=/install
 
 # Copy application code
 COPY . /app
 
-# Make cronjob script executable and start script
-RUN cp /app/cronjob.sh /usr/local/bin/cronjob.sh \
- && chmod +x /usr/local/bin/cronjob.sh \
- && chmod +x /app/start.sh \
- && chmod 0644 /app/crontab.txt
+# Ensure your scripts are executable
+RUN chmod +x /app/scripts/*.py || true \
+ && chmod +x /app/start.sh 2>/dev/null || true \
+ && chmod +x /app/docker-entrypoint.sh 2>/dev/null || true
 
-# Create mount points
-VOLUME [ "/data", "/cron" ]
+# Install cron job file from repo into /etc/cron.d
+# This expects cron/2fa-cron to exist in your repo (assignment required)
+COPY cron/2fa-cron /etc/cron.d/2fa-cron
+RUN chmod 0644 /etc/cron.d/2fa-cron \
+ && touch /var/log/cron.log
 
-# Expose app port
+# Expose the server port (adjust if your app uses a different port)
 EXPOSE 8080
 
-# Start cron and http server (start.sh will handle crontab install)
-CMD ["/bin/bash", "/app/start.sh"]
+# Use an entrypoint script to start cron then the app
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT [ "/usr/local/bin/docker-entrypoint.sh" ]
+
+# Default command: start your app. Adjust if your app uses uvicorn/gunicorn.
+CMD ["python3", "/app/app.py"]
