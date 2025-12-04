@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Start cron (Debian-based)
+service cron start || /etc/init.d/cron start || crond || true
+
+# Give cron a moment
+sleep 1
+
+# Run the python app. Update the module: replace app.server:app if needed.
+# -- If using FastAPI + uvicorn:
+if [ -n "${USE_UVICORN:-1}" ] && command -v uvicorn >/dev/null 2>&1; then
+  echo "Starting uvicorn on 0.0.0.0:8080"
+  exec uvicorn app.server:app --host 0.0.0.0 --port 8080
+fi
+
+# -- Otherwise, try to run Flask's app (server.py must have app variable)
+if python -c "import importlib, sys; importlib.import_module('app.server')" >/dev/null 2>&1; then
+  echo "Starting Flask default server on 0.0.0.0:8080"
+  exec python -u /app/server.py
+fi
+
+# fallback: run any python app.py if present
+if [ -f /app/app.py ]; then
+  exec python -u /app/app.py
+fi
+
+echo "No recognized server entrypoint found; sleeping to keep container alive"
+tail -f /dev/null

@@ -57,5 +57,4 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT [ "/usr/local/bin/docker-entrypoint.sh" ]
 
 # Default command: start your app. Adjust if your app uses uvicorn/gunicorn.
-CMD ["python", "/app/server.py"]
-CMD ["python","-m","app.server"]
+CMD ["python", "/app/app.py"]
