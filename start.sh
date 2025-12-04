@@ -31,4 +31,4 @@ sleep 1
 
 # Start Flask app (keep in foreground)
 # Use python -u to avoid buffering logs
-exec python -u -m app.main
+exec python -u -m app.server
