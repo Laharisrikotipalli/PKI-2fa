@@ -26,7 +26,12 @@ curl -X POST http://localhost:8080/verify-2fa \
   -H "Content-Type: application/json" \
   -d '{"totp":"123456"}'
 
-Repo layout
+
+
+
+
+
+## Repo layout
 
 app/                 # server and TOTP modules
 cron/2fa-cron        # cron schedule
