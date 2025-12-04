@@ -6,9 +6,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - seed-data:/app/keys
-      - cron-data:/app/cron
+      - ./keys:/app/keys:rw
+      - cron-data:/app/cron:rw
 
 volumes:
-  seed-data:
   cron-data:

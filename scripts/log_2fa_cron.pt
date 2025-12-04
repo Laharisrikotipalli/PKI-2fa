@@ -1,0 +1,38 @@
+import os
+
+code = r'''#!/usr/bin/env python3
+import sys
+from pathlib import Path
+from datetime import datetime
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+SEED_FILE = BASE_DIR / "keys" / "seed.txt"
+LOG_FILE = BASE_DIR / "cron" / "last_code.txt"
+
+def read_seed():
+    if not SEED_FILE.exists():
+        return None
+    return SEED_FILE.read_text().strip()
+
+try:
+    seed = read_seed()
+    if seed:
+        import pyotp
+        totp = pyotp.TOTP(seed)
+        code = totp.now()
+    else:
+        code = "NO_SEED"
+except Exception as e:
+    code = f"ERROR: {e}"
+
+timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+with LOG_FILE.open("a") as f:
+    f.write(f"{timestamp}  {code}\n")
+'''
+
+with open("scripts/log_2fa_cron.py", "w", encoding="utf-8") as f:
+    f.write(code)
+
+print("Created scripts/log_2fa_cron.py successfully")
+EOF

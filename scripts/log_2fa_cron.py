@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-import datetime
+import sys
 from pathlib import Path
-from generate_totp import generate_totp
+from datetime import datetime
 
-BASE = Path(__file__).resolve().parent.parent
-SEED = BASE / "keys" / "seed.txt"
-LOG_FILE = BASE / "cron" / "last_code.txt"
+BASE_DIR = Path(__file__).resolve().parent.parent
+SEED_FILE = BASE_DIR / "keys" / "seed.txt"
+LOG_FILE = BASE_DIR / "cron" / "last_code.txt"
 
-if SEED.exists():
-    seed = SEED.read_text().strip()
-    code = generate_totp(seed)
-    now = datetime.datetime.utcnow().isoformat() + "Z"
-    LOG_FILE.write_text(f"{now}  {code}\n")
+def read_seed():
+    if not SEED_FILE.exists():
+        return None
+    return SEED_FILE.read_text().strip()
+
+try:
+    seed = read_seed()
+

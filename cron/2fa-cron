@@ -1,2 +1,1 @@
-* * * * * root /usr/bin/python3 /app/cron/generate_code.py >> /var/log/cron.log 2>&1
-# Note: Using root is simplest, but make sure your generate_code script is executable.
+* * * * * root cd /app && /usr/local/bin/python3 scripts/log_2fa_cron.py >> /app/cron/last_code.txt 2>&1
