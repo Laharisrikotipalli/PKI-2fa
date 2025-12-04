@@ -1,0 +1,2 @@
+# placeholder crontab — no scheduled jobs
+# If you require the real cron entry, replace this file with cron/2fa-cron content.
