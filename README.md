@@ -1,19 +1,7 @@
-🚀 PKI-Based Two-Factor Authentication (2FA) Microservice
+## 🚀 Running the Service  
+### 👉 Copy all commands below at once
 
-Built with Python, Flask, RSA-OAEP, TOTP, Cron & Docker
-
-A compact PKI-based 2FA microservice that:
-
-Decrypts instructor-provided encrypted seed (RSA-OAEP)
-
-Generates & verifies TOTP codes (RFC 6238)
-
-Logs TOTP every minute via cron
-
-Persists seed and logs across container restarts
-
-🚀 Running the Service
-👉 Copy all commands below at once
+```bash
 # 1. Build & Run (Docker Compose)
 docker compose up -d --build
 
@@ -27,28 +15,4 @@ curl http://localhost:8080/generate-2fa
 curl -X POST http://localhost:8080/verify-2fa \
   -H "Content-Type: application/json" \
   -d '{"totp":"123456"}'
-
-🗂 Repository Layout
-
-pki-2fa/
-│── app/ — Flask server & TOTP modules
-│── cron/2fa-cron — Cron schedule
-│── scripts/log_2fa_cron.py — Cron logging script
-│── keys/ — Student + instructor RSA keys
-│── Dockerfile
-│── docker-compose.yml
-│── encrypted_seed.txt
-│── encrypted_commit_signature.txt
-│── README.md
-
-📌 Important Submission Files
-File	Description
-encrypted_seed.txt	Single-line base64 encrypted seed
-encrypted_commit_signature.txt	Single-line base64 signature
-keys/student_public.pem	Public key submitted to instructor
-keys/student_private.pem	Required private key
-GitHub repo URL & commit hash	Mandatory for submission
-👩‍💻 Author
-
-Lahari Sri
-PKI–2FA Microservice Implementation
+```
