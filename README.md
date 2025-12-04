@@ -9,7 +9,7 @@ A compact PKI-based 2FA microservice that:
 
 ---
 # 🚀 Running the Service
-1. Build & Run (Docker Compose)
+## 1. Build & Run (Docker Compose)
 docker compose up -d --build
 
 2. Health Check
