@@ -1,0 +1,7 @@
+.git
+*.log
+*.bak
+__pycache__
+.vscode
+venv
+.env
