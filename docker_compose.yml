@@ -1,11 +1,14 @@
+version: "3.8"
+
 services:
   pki:
     build: .
     ports:
       - "8080:8080"
     volumes:
-      - ./keys:/app/keys:rw
-      - cron-data:/app/cron:rw
+      - seed-data:/app/keys
+      - cron-data:/app/cron
 
 volumes:
+  seed-data:
   cron-data:

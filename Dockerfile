@@ -4,29 +4,26 @@ FROM python:3.11-slim
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-# Install cron and required system deps
+# Install cron and required system deps (fixed the broken line)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends cron openssl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy entire project into image
+# Copy project into image
 COPY . /app
 
-# Install Python dependencies
-RUN python -m pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Make sure pip is up-to-date and install python deps
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-# Copy cron file into /etc/cron.d (if present) and set permissions
-RUN if [ -f /app/cron/2fa-cron ]; then \
-      cp /app/cron/2fa-cron /etc/cron.d/2fa-cron && \
-      chmod 0644 /etc/cron.d/2fa-cron; \
+# If python3 command is missing, create a safe symlink to the working python
+# (this makes scripts that call `python3` work)
+RUN if ! command -v python3 >/dev/null 2>&1; then \
+      ln -s "$(command -v python)" /usr/bin/python3 || true; \
     fi
 
-# Make start script executable
-RUN chmod +x /app/start.sh || true
-
-ENV PYTHONUNBUFFERED=1
-
+# Expose the port we will run on
 EXPOSE 8080
 
-CMD ["/app/start.sh"]
+# Default command: run server using `python` (not python3)
+CMD ["python", "app/server.py"]

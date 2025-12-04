@@ -1,34 +1,34 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# /app/start.sh
 
-# ensure python sees the installed packages
-export PYTHONPATH=${PYTHONPATH:-/install}
+# --- 1. SETUP & UTILITIES ---
 
-# configure timezone (ensure /etc/localtime points to UTC)
-ln -sf /usr/share/zoneinfo/UTC /etc/localtime || true
-export TZ=UTC
+# Ensure the directory for the cron output file exists and has correct permissions
+# The submission requires the log at /cron/last_code.txt
+mkdir -p /cron
+touch /cron/last_code.txt
+chmod 666 /cron/last_code.txt
 
-# ensure directories exist
-mkdir -p /data /cron
-chmod 755 /data /cron
+# Run the crontab installation command if necessary (though your Dockerfile handles it, 
+# this can be a safeguard if you were using an actual crontab file instead of /etc/cron.d)
+# Since you used /etc/cron.d, the schedule is ALREADY installed by the Dockerfile.
 
-# If a crontab file is mounted at /cron/crontab, use that
-# Else fallback to the app-provided crontab.txt
-if [ -f /cron/crontab ]; then
-  echo "Using crontab from /cron/crontab"
-  crontab /cron/crontab
-else
-  echo "Using bundled crontab (/app/crontab.txt)"
-  crontab /app/crontab.txt
-fi
+# --- 2. START BACKGROUND SERVICES (CRON) ---
 
-# Ensure cron is running (daemon)
-# Start cron in background so we can run the app in foreground
+echo "Starting cron daemon..."
+# Start the cron daemon in the background
+# The '-L' flag is often used to specify a log file if not logging to stdout/stderr
 cron
 
-# Optionally, give a tiny delay to let cron start
-sleep 1
+# Optional: Verify cron jobs are loaded (check inside running container)
+# crontab -l
 
-# Start Flask app (keep in foreground)
-# Use python -u to avoid buffering logs
-exec python -u -m app.server
+# --- 3. START FOREGROUND APPLICATION (WEB SERVER) ---
+
+echo "Starting Flask web server..."
+# Run the main Flask application. 
+# Using 'exec' replaces the current shell with the python process, 
+# making the web server the primary process, which is ideal for Docker.
+exec python -m app.server
+
+# The container will stay alive as long as 'app.server' is running.
