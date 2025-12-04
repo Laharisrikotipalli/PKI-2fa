@@ -2,13 +2,20 @@
 """
 Cron script to log 2FA codes every minute.
 
-Reads a hex seed from /data/seed.txt, converts to base32 (for compatibility),
-generates a 6-digit TOTP (HMAC-SHA1, 30s window) and prints a line:
+This version prints the exact required format:
 
-YYYY-MM-DD HH:MM:SS 2FA Code: 123456
+YYYY-MM-DDTHH:MM:SSZ - code: 123456
+
+Behavior:
+- Reads a seed from /data/seed.txt by default (or from SEED_FILE env var).
+- Accepts the seed in either hex or base32. Whitespace/newlines are ignored.
+- Produces a 6-digit TOTP using HMAC-SHA1 and 30s timestep (RFC6238 style).
+- Writes the formatted line to stdout (so cron can redirect it to /cron/last_code.txt).
 """
 
 from __future__ import annotations
+import os
+import sys
 import time
 import hmac
 import hashlib
@@ -16,63 +23,64 @@ import struct
 from datetime import datetime, timezone
 from pathlib import Path
 import base64
-import sys
+import re
 
-SEED_PATH = Path("/data/seed.txt")
+DEFAULT_SEED_PATH = Path("/data/seed.txt")  # inside container; override with SEED_FILE env var
+TIME_STEP = 30
 DIGITS = 6
-STEP = 30  # seconds
 
-def read_hex_seed(path: Path) -> bytes | None:
-    try:
-        s = path.read_text().strip()
-    except FileNotFoundError:
-        return None
+
+def read_seed(path: Path) -> bytes:
+    """Read seed string and return raw bytes. Accept hex or base32."""
+    if not path.exists():
+        raise FileNotFoundError(f"seed file not found: {path}")
+    s = path.read_text().strip()
     if not s:
-        return None
-    s = "".join(s.split())
+        raise ValueError("seed file is empty")
+
+    # Remove spaces/newlines
+    s_clean = re.sub(r"\s+", "", s)
+
+    # If it looks like hex (even length, hex chars), parse as hex
+    if re.fullmatch(r"(?:[0-9a-fA-F]{2})+", s_clean):
+        return bytes.fromhex(s_clean)
+
+    # Otherwise, try base32 (add padding if necessary)
     try:
-        return bytes.fromhex(s)
-    except ValueError:
-        return None
+        padding = '=' * (-len(s_clean) % 8)
+        return base64.b32decode(s_clean.upper() + padding)
+    except Exception as ex:
+        raise ValueError(f"seed is neither valid hex nor base32: {ex}")
 
-def hex_to_base32(hex_bytes: bytes) -> str:
-    """Return RFC4648 base32 string without padding (uppercase)."""
-    b32 = base64.b32encode(hex_bytes).decode('ascii')
-    # remove '=' padding to match many base32 TOTP conventions
-    return b32.rstrip('=')
 
-def totp_from_secret_bytes(secret_bytes: bytes, digits: int = DIGITS, step: int = STEP, algo=hashlib.sha1) -> str:
-    """Generate TOTP directly from raw secret bytes (HMAC-SHA1)."""
-    counter = int(time.time() // step)
+def generate_totp(seed: bytes, for_time: int | None = None, digits: int = DIGITS, timestep: int = TIME_STEP) -> str:
+    """Generate HMAC-SHA1 TOTP code (returns zero-padded string)."""
+    if for_time is None:
+        for_time = int(time.time())
+    counter = int(for_time // timestep)
+    # 8-byte big-endian counter
     counter_bytes = struct.pack(">Q", counter)
-    hmac_hash = hmac.new(secret_bytes, counter_bytes, algo).digest()
-    offset = hmac_hash[-1] & 0x0F
-    code_int = struct.unpack(">I", hmac_hash[offset:offset+4])[0] & 0x7fffffff
-    return str(code_int % (10**digits)).zfill(digits)
+    hmac_digest = hmac.new(seed, counter_bytes, hashlib.sha1).digest()
+    # dynamic truncation
+    offset = hmac_digest[-1] & 0x0F
+    code_int = struct.unpack(">I", hmac_digest[offset:offset+4])[0] & 0x7FFFFFFF
+    code = str(code_int % (10 ** digits)).zfill(digits)
+    return code
 
-def utc_timestamp_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-def main() -> int:
-    secret_bytes = read_hex_seed(SEED_PATH)
-    if secret_bytes is None:
-        print(f"{utc_timestamp_now()} 2FA Code: ERROR - seed missing or invalid", flush=True)
-        return 2
-
-    # for compatibility: show base32 if needed (not used for generation below)
+def main():
+    seed_file = Path(os.environ.get("SEED_FILE", DEFAULT_SEED_PATH))
     try:
-        base32_secret = hex_to_base32(secret_bytes)
-    except Exception:
-        base32_secret = None
-
-    try:
-        code = totp_from_secret_bytes(secret_bytes)
+        seed = read_seed(seed_file)
     except Exception as e:
-        print(f"{utc_timestamp_now()} 2FA Code: ERROR - {e}", flush=True)
-        return 3
+        # Write a clear error to stderr and exit non-zero so cron logs capture the problem.
+        print(f"{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} - error: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    print(f"{utc_timestamp_now()} 2FA Code: {code}", flush=True)
-    return 0
+    code = generate_totp(seed)
+    # EXACT required output format:
+    print(f"{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} - code: {code}")
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -2,6 +2,10 @@ from flask import Flask, request, jsonify
 import os
 from .decrypt_seed import decrypt_seed
 from .totp_generator import generate_totp
+import sys, json
+print("DEBUG: got request body:", file=sys.stderr)
+##COMMENTED_BY_FIX print(json.dumps(request.get_json()), file=sys.stderr)
+sys.stderr.flush()
 
 # Flask app must be initialized BEFORE route decorators
 app = Flask(__name__)
