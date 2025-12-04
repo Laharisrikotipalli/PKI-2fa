@@ -182,3 +182,6 @@ def totp_route():
     except Exception as e:
         app.logger.exception("Failed to generate TOTP: %s", e)
         return jsonify({"error": "failed to generate totp", "detail": str(e)}), 500
+if __name__ == "__main__":
+    # bind to 0.0.0.0 so the container port maps to host
+    app.run(host="0.0.0.0", port=8080)
