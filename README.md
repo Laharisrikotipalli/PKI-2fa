@@ -56,7 +56,7 @@ The `/screenshots` directory contains validated evidence of the system's operati
 ##  Getting Started
 1. **Clone the repository**:
    ```bash
-   git clone [https://github.com/Laharisrikotipalli/pki-2fa.git](https://github.com/Laharisrikotipalli/pki-2fa.git)
+   git clone (https://github.com/Laharisrikotipalli/pki-2fa.git)
 **Launch the Microservice:**
 
 Bash
